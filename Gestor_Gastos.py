@@ -487,3 +487,146 @@ class App:
         descripcion = self.entrada_descripcion.get().strip()
         monto = self.entrada_monto.get().strip()
         categoria = self.entrada_categoria.get().strip()
+
+    # Validar que el monto sea un número positivo
+        
+        try:
+            
+            monto = float(monto)
+            if monto <= 0:
+                messagebox.showerror("Error", "El monto debe ser mayor que cero.")
+                return
+        except ValueError:
+            messagebox.showerror("Error", "Monto inválido. Debes ingresar un número válido.")
+            return
+
+        if not descripcion:
+            messagebox.showerror("Error", "La descripción no puede estar vacía.")
+            return
+
+        if categoria == "":
+            messagebox.showerror("Error", "La categoría no puede estar vacía.")
+            return
+
+    # Crear el gasto
+        gasto = Gasto(descripcion, monto, categoria)
+
+        if self.gestor.agregar_gasto(gasto):
+            self.etiqueta_saldo.config(text=f"Saldo Actual: ${self.usuario.saldo:.2f}")
+            messagebox.showinfo("Éxito", "Gasto agregado correctamente.")
+            self.crear_historial()
+        else:
+            messagebox.showerror("Error", "Saldo insuficiente.")
+
+        
+     #Oscar
+        """
+        Función para agregar fondos al saldo disponible del usuario.
+        - Valida las entradas: descripción y monto.
+        - Actualiza el saldo en el sistema y registra el ingreso en la base de datos.
+        - Actualiza la interfaz mostrando el nuevo saldo y el historial.
+
+        Se encapsula la lógica de validación y actualización del saldo en esta función.
+        """
+    def agregar_fondos(self):
+        descripcion_fondo = self.entrada_descripcion_fondo.get().strip()
+        monto_fondo = self.entrada_monto_fondo.get().strip()
+
+        try:
+            monto_fondo = float(monto_fondo)
+        except ValueError:
+            messagebox.showerror("Error", "Monto invalido")
+            return
+        
+        if not descripcion_fondo:
+            messagebox.showerror("Error", "Descripción no puede estar vacía.")
+            return
+        if monto_fondo <= 0:
+            messagebox.showerror("Error", "El monto debe ser mayor a cero")
+            return
+        
+        self.gestor.agregar_fondos(monto_fondo)
+
+        conn = sqlite3.connect('gastospersonales.db')
+        cursor = conn.cursor()
+
+        cursor.execute(''' 
+        INSERT INTO historial_gastos (usuario_id, descripcion, cantidad, categoria)
+        VALUES (?, ?, ?, ?)
+        ''', (self.usuario.id_usuario, descripcion_fondo, monto_fondo, "Ingreso"))
+        
+        conn.commit()
+        conn.close()
+
+        self.etiqueta_saldo.config(text=f"Saldo Actual: ${self.usuario.saldo:.2f}")
+        self.crear_historial()
+
+        messagebox.showinfo("Éxito", f"Fondos agregados: ${monto_fondo:.2f} con la descripcion'{descripcion_fondo}'.")
+    
+     #Vladimir
+        """
+        Función para generar el historial de gastos en la interfaz.
+        - Muestra un Treeview con los gastos del usuario extraídos de la base de datos.
+        - Actualiza la tabla cada vez que se realiza una operación (como agregar o borrar un gasto).
+
+         Oculta la lógica de recuperación de datos y configuración visual detrás de una función sencilla.
+        """
+    def crear_historial(self):
+    # Si existe un frame previo, destruirlo para evitar errores
+        if self.frame_historial is not None and self.frame_historial.winfo_exists():
+            self.frame_historial.destroy()
+
+    # Crear un nuevo frame para el historial
+    # Ajustar el tamaño del frame para que esté alineado con los botones
+        self.frame_historial = tk.Frame(self.root, bg="#ffffff", height=350)  # Ajusta la altura aquí según tus necesidades
+        self.frame_historial.place(relx=0.5, rely=0.8, anchor="center", width=900, height=220)
+
+        style = ttk.Style()
+        style.configure("Treeview", font=("Arial", 12))  # Cambia 'Arial' y 12 por la fuente y tamaño que prefieras
+        style.configure("Treeview.Heading", font=("Arial", 14, "bold"))
+
+    # Crear un nuevo Treeview en el frame con un número reducido de filas visibles
+        self.tabla_historial = ttk.Treeview(self.frame_historial, columns=("Descripcion", "Monto", "Categoria", "Fecha"), show="headings", height=1)
+        self.tabla_historial.pack(fill="both", expand=True)
+
+    # Definir encabezados y ajustar columnas
+        self.tabla_historial.heading("Descripcion", text="Descripción")
+        self.tabla_historial.heading("Monto", text="Monto")
+        self.tabla_historial.heading("Categoria", text="Categoría")
+        self.tabla_historial.heading("Fecha", text="Fecha")
+
+    # Ajustar el ancho de las columnas para ocupar menos espacio
+        self.tabla_historial.column("Descripcion", width=150)
+        self.tabla_historial.column("Monto", width=80)
+        self.tabla_historial.column("Categoria", width=120)
+        self.tabla_historial.column("Fecha", width=100)
+
+    # Conectar a la base de datos y recuperar los datos para llenar la tabla
+        conn = sqlite3.connect('gastospersonales.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT descripcion, cantidad, categoria, fecha FROM historial_gastos WHERE usuario_id = ? ORDER BY fecha ASC", (self.usuario.id_usuario,))
+        gastos = cursor.fetchall()
+        conn.close()
+
+    # Insertar los datos en la tabla
+        for gasto in gastos:
+            descripcion, cantidad, categoria, fecha = gasto
+            cantidad_formateada = f"${cantidad:.2f}"
+            self.tabla_historial.insert("", "end", values=(descripcion, cantidad_formateada, categoria, fecha))
+
+    def cerrar_sesion(self):
+    # Limpia la ventana actual
+        self.limpiar_ventana()
+    
+    # Elimina cualquier referencia a frames anteriores para evitar residuos
+        self.frame_actual = None
+        self.frame_gastos = None
+    
+    # Vuelve a crear la interfaz de login
+        self.crear_login()
+
+
+# Crear ventana principal
+root = tk.Tk()
+app = App(root)
+root.mainloop()
