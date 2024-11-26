@@ -316,3 +316,174 @@ class App:
         if contraseña != confirmar_contraseña:
             messagebox.showerror("Error", "Las contraseñas no coinciden.")
             return
+          
+
+         try:
+            saldo = float(saldo)
+            if saldo <= 0:
+                messagebox.showerror("Error", "El saldo inicial debe ser un numero positivo mayor que cero")
+                return
+        except ValueError:
+            messagebox.showerror("Error", "Saldo inicial valido")
+            return
+
+        conn = sqlite3.connect('gastospersonales.db')
+        cursor = conn.cursor()
+
+        try:
+             cursor.execute("INSERT INTO usuarios (nombre_usuario, contraseña, saldo) VALUES (?, ?, ?)", (nombre, contraseña, saldo))
+             conn.commit()
+             messagebox.showinfo("Éxito", "Usuario registrado correctamente.")
+             self.frame_registro.destroy()
+             self.crear_login()
+        except sqlite3.IntegrityError:
+             messagebox.showerror("Error", "El usuario ya existe.")
+        finally:
+             conn.close()
+            
+    #Brandon
+    """"
+    Se representa una interfaz gráfica para gestionar gastos personales. Utiliza el módulo tkinter 
+    para construir la interfaz y sqlite3 para manejar la persistencia de datos.
+
+    Registra un nuevo usuario en la base de datos.
+    
+       - Valida los datos ingresados en el formulario de registro.
+       - Verifica que el nombre de usuario no exista y que las contraseñas coincidan.
+       - Guarda el nuevo usuario en la base de datos con el saldo inicial.
+       - Muestra mensajes de éxito o error según corresponda.
+    """
+    def crear_interfaz_gastos(self):
+        self.limpiar_ventana()
+
+        self.frame_gastos = tk.Frame(self.root, bg="#e8f5e9", padx=20, pady=20)
+        self.frame_gastos.pack(fill="both", expand=True)
+
+        # Barra superior con bienvenida
+        self.bienvenida_label = tk.Label(self.frame_gastos, text=f"Bienvenido {self.usuario.nombre}", font=("Arial", 14, "bold"), bg="#2196f3", fg="#ffffff")
+        self.bienvenida_label.pack(fill="x", pady=5)
+
+        self.etiqueta_saldo = tk.Label(self.frame_gastos, text=f"Saldo Actual: ${self.usuario.saldo:.2f}", font=("Arial", 12), bg="#ffffff", fg="#333333")
+        self.etiqueta_saldo.pack(pady=10)
+
+
+        # Sección para agregar gastos
+        self.frame_agregar_gasto = tk.Frame(self.frame_gastos, bg="#ffffff", pady=10)
+        self.frame_agregar_gasto.pack(fill="x", padx=10, pady=10)
+
+        tk.Label(self.frame_agregar_gasto, text="Descripción:", font=("Arial", 12), bg="#ffffff", fg="#333333").grid(row=0, column=0, padx=10, pady=5)
+        self.entrada_descripcion = tk.Entry(self.frame_agregar_gasto, font=("Arial", 12), bd=2, relief="solid")
+        self.entrada_descripcion.grid(row=0, column=1, padx=10, pady=5)
+
+        tk.Label(self.frame_agregar_gasto, text="Monto:", font=("Arial", 12), bg="#ffffff", fg="#333333").grid(row=1, column=0, padx=10, pady=5)
+        self.entrada_monto = tk.Entry(self.frame_agregar_gasto, font=("Arial", 12), bd=2, relief="solid")
+        self.entrada_monto.grid(row=1, column=1, padx=10, pady=5)
+
+        tk.Label(self.frame_agregar_gasto, text="Categoría:", font=("Arial", 12), bg="#ffffff", fg="#333333").grid(row=2, column=0, padx=10, pady=5)
+        self.categorias = ["Alimentos", "Transporte", "Entretenimiento", "Otros", "Hogar", "Medicamentos"]
+        self.entrada_categoria = ttk.Combobox(self.frame_agregar_gasto, values=self.categorias, font=("Arial", 12))
+        self.entrada_categoria.grid(row=2, column=1, padx=10, pady=5)
+        self.entrada_categoria.current(0)
+
+        self.entrada_otro = tk.Entry(self.frame_agregar_gasto, font=("Arial", 12), bd=2, relief="solid")
+        self.entrada_otro.grid(row=3, column=1, padx=10, pady=5)
+        self.entrada_otro.grid_remove()  # Ocultar el cuadro de texto inicialmente
+
+    #Oscar
+    # Gestión de eventos:
+        """Se conecta un evento de selección de categoría en un combobox a la función `manejar_categoria_seleccionada`.
+            Los botones ejecutan distintas funciones como agregar gastos, agregar fondos, borrar el historial, y cerrar sesión.Conectar el evento de selección del combobox a una función
+            self.entrada_categoria.bind("<<ComboboxSelected>>", self.manejar_categoria_seleccionada)
+        """
+     # Botón para agregar el gasto
+        tk.Button(self.frame_agregar_gasto, text="Agregar Gasto", bg="#4CAF50", fg="white", font=("Arial", 12), command=self.agregar_gasto).grid(row=4, columnspan=2, pady=10)
+
+
+        # Sección para agregar fondos
+        # Sección para agregar fondos
+        self.frame_fondos = tk.Frame(self.frame_gastos, bg="#ffffff", pady=10)
+        self.frame_fondos.pack(fill="x", padx=10, pady=10)
+
+    # Agregar campos para ingresar descripción y monto de fondos
+        tk.Label(self.frame_fondos, text="Descripción:", font=("Arial", 12), bg="#ffffff", fg="#333333").grid(row=0, column=0, padx=10, pady=5)
+        self.entrada_descripcion_fondo = tk.Entry(self.frame_fondos, font=("Arial", 12), bd=2, relief="solid")
+        self.entrada_descripcion_fondo.grid(row=0, column=1, padx=10, pady=5)
+
+        tk.Label(self.frame_fondos, text="Monto a agregar:", font=("Arial", 12), bg="#ffffff", fg="#333333").grid(row=1, column=0, padx=10, pady=5)
+        self.entrada_monto_fondo = tk.Entry(self.frame_fondos, font=("Arial", 12), bd=2, relief="solid")
+        self.entrada_monto_fondo.grid(row=1, column=1, padx=10, pady=5)
+
+    # Botón para agregar fondos
+        tk.Button(self.frame_fondos, text="Agregar Fondos", bg="#2196f3", fg="white", font=("Arial", 12), command=self.agregar_fondos).grid(row=2, columnspan=2, pady=10)
+
+        # Función `crear_historial`: Genera un componente visual tipo tabla para mostrar los gastos registrados.
+        self.crear_historial()
+
+        tk.Button(self.frame_gastos, text="Cerrar Sesión", bg="#f44336", fg="white", font=("Arial", 12), command=self.cerrar_sesion).pack(side="right", padx=10,pady=10)
+        tk.Button(self.frame_gastos, text="Borrar Historial", bg="#f44336", fg="white", font=("Arial", 12), command=self.borrar_historial).pack(side="left", padx=10,pady=10)
+
+        self.crear_historial()
+
+    #Vladimir
+    #Función `borrar_historial`: Elimina los registros del historial desde la base de datos.
+    def borrar_historial(self):
+        # Confirmación antes de borrar el historial
+        respuesta = messagebox.askyesno("Confirmación", "¿Estás seguro de que deseas borrar todo el historial de gastos?")
+        
+        if respuesta:  # Si el usuario confirma, procedemos
+            try:
+                # Conectar a la base de datos y eliminar los registros del historial
+                # Utiliza sqlite3 para almacenar y recuperar datos, asegurando la persistencia entre sesiones.
+
+                conn = sqlite3.connect('gastospersonales.db')
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM historial_gastos WHERE usuario_id = ?", (self.usuario.id_usuario,))
+                conn.commit()
+                conn.close()
+
+                # Actualizar la vista del historial (vaciar la tabla)
+                self.crear_historial()
+
+                # Mostrar mensaje de éxito
+                messagebox.showinfo("Éxito", "Historial de gastos borrado correctamente.")
+            
+            except sqlite3.Error as e:
+                # Manejo de errores de la base de datos
+                messagebox.showerror("Error", f"Hubo un error al borrar el historial: {e}")
+    #Brandon
+        """
+        Función que se activa cuando se selecciona una categoría en el combobox.
+        - Si la categoría seleccionada es "Otros", muestra un campo adicional (`entrada_otro`) para ingresar más detalles.
+        - Si no, oculta dicho campo.
+
+        Argumentos:
+        event -- Evento disparado al seleccionar una categoría.
+
+        - Esta función encapsula el comportamiento relacionado con la interacción del usuario y asegura que los campos sean 
+          mostrados u ocultados de manera correcta según la categoría seleccionada.
+        """
+    def manejar_categoria_seleccionada(self,event):
+        categoria_seleccionada = self.entrada_categoria.get()
+
+        if categoria_seleccionada == "Otros":
+            self.entrada_otro.grid()
+        else:
+            self.entrada_otro.grid.remove()
+
+    def agregar_gasto(self):
+        """
+        Función para agregar un gasto al sistema.
+        - Valida las entradas: descripción, monto y categoría.
+        - Crea un objeto Gasto y lo agrega al sistema si los datos son válidos y el saldo es suficiente.
+        - Actualiza el saldo y el historial de gastos.
+        
+        Abstracción: Detalles técnicos como la creación del objeto `Gasto` y la interacción con el gestor están ocultos 
+          al usuario, facilitando el entendimiento del flujo principal.
+
+        Manejo de errores:
+        - Valida las entradas del usuario y utiliza `try-except` para capturar errores en el formato del monto.
+        """
+        
+        descripcion = self.entrada_descripcion.get().strip()
+        monto = self.entrada_monto.get().strip()
+        categoria = self.entrada_categoria.get().strip()
